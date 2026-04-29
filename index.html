@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Picker | Assignation Aléatoire</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .winner-animate { animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight uppercase italic">Testeur <span class="text-indigo-600 italic">Picker</span></h1>
+            <p class="text-slate-500 text-sm mt-2 font-medium">Assignez vos US ou vos campagnes de tests aléatoirement.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <div class="space-y-6">
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">L'Équipe QA / Métier</h2>
+                    
+                    <div class="flex gap-2 mb-6">
+                        <input type="text" id="nameInput" placeholder="Prénom du testeur..." class="flex-1 border-2 border-slate-100 rounded-xl px-4 py-2 text-sm focus:border-indigo-500 outline-none transition">
+                        <button onclick="addMember()" class="bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-black transition font-bold text-sm">+</button>
+                    </div>
+
+                    <div id="teamList" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                        </div>
+                </section>
+
+                <section class="bg-indigo-900 p-6 rounded-2xl text-white shadow-xl shadow-indigo-100">
+                    <h2 class="text-xs font-black opacity-60 uppercase tracking-widest mb-4">Paramètres du tirage</h2>
+                    <div class="flex items-center justify-between gap-4">
+                        <label class="text-sm font-bold">Nombre de testeurs à désigner :</label>
+                        <input type="number" id="countToPick" value="1" min="1" class="w-16 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-center outline-none focus:ring-2 focus:ring-white">
+                    </div>
+                    <button onclick="pickTesteurs()" class="w-full mt-6 bg-white text-indigo-900 font-black py-4 rounded-xl hover:bg-indigo-50 transition shadow-lg uppercase tracking-widest">
+                        Lancer le tirage
+                    </button>
+                </section>
+            </div>
+
+            <div class="space-y-6">
+                <section id="resultContainer" class="bg-white p-8 rounded-3xl border-4 border-dashed border-slate-100 min-h-[300px] flex flex-col items-center justify-center text-center">
+                    <div id="resultContent" class="space-y-4">
+                        <div class="text-slate-300 italic text-sm">Prêt pour l'assignation...</div>
+                    </div>
+                </section>
+
+                <div class="bg-slate-100 p-4 rounded-xl">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Historique des assignations</h3>
+                    <div id="pickHistory" class="text-[11px] font-mono text-slate-500 space-y-1">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let team = JSON.parse(localStorage.getItem('qa_team')) || [
+            { name: "Alice", active: true },
+            { name: "Benoît", active: true },
+            { name: "Chloé", active: true },
+            { name: "Damien", active: true }
+        ];
+
+        function addMember() {
+            const input = document.getElementById('nameInput');
+            const name = input.value.trim();
+            if (name) {
+                team.push({ name, active: true });
+                input.value = "";
+                saveAndRender();
+            }
+        }
+
+        function toggleMember(index) {
+            team[index].active = !team[index].active;
+            saveAndRender();
+        }
+
+        function removeMember(index) {
+            team.splice(index, 1);
+            saveAndRender();
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('qa_team', JSON.stringify(team));
+            renderTeam();
+        }
+
+        function renderTeam() {
+            const list = document.getElementById('teamList');
+            list.innerHTML = team.map((m, i) => `
+                <div class="flex items-center justify-between p-3 rounded-xl border ${m.active ? 'bg-white border-slate-100 shadow-sm' : 'bg-slate-50 border-transparent opacity-50'} transition">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${m.active ? 'checked' : ''} onclick="toggleMember(${i})" class="w-4 h-4 rounded text-indigo-600">
+                        <span class="text-sm font-bold text-slate-700">${m.name}</span>
+                    </div>
+                    <button onclick="removeMember(${i})" class="text-slate-300 hover:text-red-500">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function pickTesteurs() {
+            const available = team.filter(m => m.active);
+            const count = parseInt(document.getElementById('countToPick').value);
+            const content = document.getElementById('resultContent');
+            const history = document.getElementById('pickHistory');
+
+            if (available.length < count) {
+                alert("Pas assez de testeurs disponibles !");
+                return;
+            }
+
+            // Animation de "chargement"
+            content.innerHTML = '<div class="text-indigo-600 font-bold animate-bounce">Sélection en cours...</div>';
+
+            setTimeout(() => {
+                const shuffled = [...available].sort(() => 0.5 - Math.random());
+                const selected = shuffled.slice(0, count);
+
+                content.innerHTML = `
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Testeur(s) désigné(s) :</h3>
+                    <div class="space-y-3">
+                        ${selected.map(s => `
+                            <div class="winner-animate bg-indigo-50 text-indigo-700 border-2 border-indigo-200 text-2xl font-black py-4 px-8 rounded-2xl shadow-lg">
+                                ${s.name}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                // Update history
+                const names = selected.map(s => s.name).join(', ');
+                const time = new Date().toLocaleTimeString();
+                const hEntry = document.createElement('div');
+                hEntry.innerHTML = `<span class="text-indigo-400">[${time}]</span> ${names}`;
+                history.prepend(hEntry);
+            }, 600);
+        }
+
+        // Init
+        renderTeam();
+    </script>
+</body>
+</html>
